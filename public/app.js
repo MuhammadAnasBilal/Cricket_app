@@ -7,10 +7,11 @@ let lastStateStr = "";
 let clockOffset = 0;
 let customBidVal = "";
 let soundEnabled = localStorage.getItem("auction_sound") !== "false";
-let pin = sessionStorage.getItem("host_pin") || "1234";
+let pin = sessionStorage.getItem("host_pin") || ""; // No default prefill
 let me = JSON.parse(localStorage.getItem("cricket_auction_me") || "null");
 let previousHighBid = 0;
 let previousLot = -1;
+let editingTeamId = null;
 
 // Web Audio API Synthesizer
 let audioCtx = null;
@@ -85,7 +86,7 @@ async function api(action, data = {}, quiet = false) {
         ...data,
         id: me ? me.id : undefined,
         token: me ? me.token : undefined,
-        pin
+        pin: pin || data.pin
       })
     });
     const json = await res.json();
@@ -138,7 +139,7 @@ async function poll() {
     localStorage.removeItem("cricket_auction_me");
   }
 
-  if (S.phase === "live") {
+  if (S.phase === "live" && !S.paused) {
     if (previousLot !== -1 && previousLot !== S.idx) {
       playGavelSound();
     }
@@ -147,7 +148,7 @@ async function poll() {
     }
     previousLot = S.idx;
     previousHighBid = S.high;
-  } else {
+  } else if (S.phase !== "live") {
     previousLot = -1;
     previousHighBid = 0;
   }
@@ -159,10 +160,12 @@ async function poll() {
     idx: S.idx,
     high: S.high,
     by: S.by,
+    paused: S.paused,
     skipLen: (S.skip || []).length,
     teams: S.teams,
     logLen: (S.log || []).length,
-    myId: me ? me.id : null
+    myId: me ? me.id : null,
+    editingTeamId
   });
 
   if (stateSignature !== lastStateStr) {
@@ -177,8 +180,13 @@ function updateNavbarStatus() {
   if (!badge || !text || !S) return;
 
   if (S.phase === "live") {
-    badge.className = "status-badge live";
-    text.textContent = `Live: Lot ${(S.idx || 0) + 1}/${S.total}`;
+    if (S.paused) {
+      badge.className = "status-badge lobby";
+      text.textContent = `Paused: Lot ${(S.idx || 0) + 1}/${S.total}`;
+    } else {
+      badge.className = "status-badge live";
+      text.textContent = `Live: Lot ${(S.idx || 0) + 1}/${S.total}`;
+    }
   } else if (S.phase === "lobby") {
     badge.className = "status-badge lobby";
     text.textContent = "Lobby";
@@ -188,9 +196,15 @@ function updateNavbarStatus() {
   }
 }
 
+// Timer tick
 setInterval(() => {
   const timerEl = $("#timer-display");
   if (timerEl && S && S.phase === "live") {
+    if (S.paused) {
+      timerEl.textContent = "PAUSED";
+      timerEl.className = "timer-sec warning tabular";
+      return;
+    }
     const remainingSec = Math.max(0, Math.ceil((S.end - (Date.now() + clockOffset)) / 1000));
     timerEl.textContent = remainingSec + "s";
     if (remainingSec <= 5) {
@@ -253,6 +267,11 @@ function render() {
   } else {
     renderDone(app);
   }
+
+  // Render Edit Modal if active
+  if (editingTeamId && S.teams[editingTeamId]) {
+    renderEditModal(app, editingTeamId, S.teams[editingTeamId]);
+  }
 }
 
 /* =========================================================
@@ -267,9 +286,9 @@ function renderLobby(app) {
     <div class="demo-banner">
       <div>
         <strong style="color:#fbbf24; display:block; margin-bottom:2px;">⚡ Solo Mode / Quick Test</strong>
-        <span class="text-muted" style="font-size:13px;">Testing alone? Add 3 simulated rival teams with one click to start the auction right away!</span>
+        <span class="text-muted" style="font-size:13px;">Testing alone? Add 3 rival teams with autonomous bidding AI to start the auction right away!</span>
       </div>
-      <button class="btn btn-secondary" data-action="add_bots" onclick="addDemoTeams()">+ Add Demo Teams</button>
+      <button class="btn btn-secondary" data-action="add_bots">+ Add Demo Teams</button>
     </div>
 
     <div class="grid-2">
@@ -282,13 +301,13 @@ function renderLobby(app) {
         ${!userTeam ? `
           <div class="form-group">
             <label class="form-label">Team Franchise Name</label>
-            <input type="text" id="join-team" placeholder="e.g. Lahore Leopards, Karachi Titans" maxlength="24">
+            <input type="text" id="join-team" placeholder="e.g. Lahore Leopards" maxlength="24">
           </div>
           <div class="form-group">
             <label class="form-label">Captain Name (Your Name)</label>
-            <input type="text" id="join-cap" placeholder="e.g. Alex, Bilal" maxlength="24">
+            <input type="text" id="join-cap" placeholder="e.g. Bilal" maxlength="24">
           </div>
-          <button class="btn btn-primary btn-lg" style="width:100%" data-action="join" onclick="joinAuction()">Join Auction Room</button>
+          <button class="btn btn-primary btn-lg" style="width:100%" data-action="join">Join Auction Room</button>
         ` : `
           <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:16px; margin-bottom:16px;">
             <div style="font-size:18px; font-weight:800; color:#fff;">${userTeam.team}</div>
@@ -297,7 +316,7 @@ function renderLobby(app) {
               ✓ Ready in Lobby
             </div>
           </div>
-          <p class="text-muted" style="font-size:13px;">You are registered in the room. Waiting for host to click "Start Auction".</p>
+          <p class="text-muted" style="font-size:13px;">You are registered in the room. Waiting for host to start the auction.</p>
         `}
       </div>
 
@@ -329,10 +348,13 @@ function renderLobby(app) {
       </div>
     </div>
 
-    <!-- Registered Teams List -->
+    <!-- Registered Teams List with Host Management -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title">👥 Teams in Lobby (${teamIds.length})</div>
+        <div class="card-title">
+          👥 Teams in Lobby (${teamIds.length})
+          ${pin ? '<span class="host-badge-pill">👑 Host Mode Enabled</span>' : ''}
+        </div>
         <span class="text-muted" style="font-size:13px;">Minimum 2 teams required to start</span>
       </div>
 
@@ -347,6 +369,7 @@ function renderLobby(app) {
                 <th>Captain</th>
                 <th>Purse</th>
                 <th>Type</th>
+                ${pin ? '<th style="text-align:right;">Host Actions</th>' : ''}
               </tr>
             </thead>
             <tbody>
@@ -359,6 +382,12 @@ function renderLobby(app) {
                     <td>${t.cap}</td>
                     <td class="tabular text-gold">${t.budget}M</td>
                     <td>${t.isBot ? '<span class="badge-bot">AI BOT</span>' : '<span style="font-size:12px; color:#86a394;">Player</span>'}</td>
+                    ${pin ? `
+                      <td style="text-align:right;">
+                        <button class="btn btn-secondary btn-xs" data-action="open_edit_team" data-arg="${id}">✏️ Edit</button>
+                        <button class="btn btn-danger btn-xs" data-action="remove_team" data-arg="${id}" style="margin-left:4px;">🗑️ Kick</button>
+                      </td>
+                    ` : ''}
                   </tr>
                 `;
               }).join("")}
@@ -368,18 +397,26 @@ function renderLobby(app) {
       `}
     </div>
 
-    <!-- Host Control Box -->
-    <div class="card" style="border-color: rgba(245,158,11,0.3);">
+    <!-- Host Master Control Box -->
+    <div class="card" style="border-color: rgba(245,158,11,0.35);">
       <div class="card-header">
-        <div class="card-title text-gold">👑 Host Controls</div>
-        <span class="text-dim">Default PIN: 1234</span>
+        <div class="card-title text-gold">👑 Host Master Controls</div>
+        <span class="text-dim">Host authorizes all major controls</span>
       </div>
       <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
-        <input type="password" id="host-pin" placeholder="Host PIN (default: 1234)" value="${pin}" style="max-width:240px; margin:0;" oninput="onPinChange(this.value)">
-        <button class="btn btn-gold btn-lg" data-action="start" ${teamIds.length < 2 ? "disabled" : ""} onclick="startAuction()">
+        <input type="password" id="host-pin" placeholder="Enter Host PIN" value="${pin}" style="max-width:220px; margin:0;" oninput="onPinChange(this.value)">
+        <button class="btn btn-gold btn-lg" data-action="start" ${teamIds.length < 2 ? "disabled" : ""}>
           ▶ Start Auction Now
         </button>
+        <button class="btn btn-secondary" data-action="change_pin_dialog">
+          🔑 Change Host PIN
+        </button>
       </div>
+      ${!pin ? `
+        <p class="text-dim" style="margin-top:8px;">Enter your Host PIN above to unlock team editing, kicking, and starting permissions.</p>
+      ` : `
+        <p class="text-muted" style="margin-top:8px; font-size:13px; color:#34d399;">✓ Host authenticated. You can now edit/remove teams from the table or start the auction.</p>
+      `}
     </div>
   `;
 }
@@ -402,9 +439,21 @@ function renderLive(app) {
 
   const minNextBid = S.high === 0 ? curPlayerBase : r1(S.high + 0.5);
   const userMax = userTeam ? maxBid(userTeam) : 0;
-  const canBid = userTeam && open(userTeam) && !isLeader && !hasSkipped && minNextBid <= userMax;
+  const canBid = userTeam && open(userTeam) && !isLeader && !hasSkipped && minNextBid <= userMax && !S.paused;
 
   app.innerHTML = `
+    <!-- Paused Notice Banner -->
+    ${S.paused ? `
+      <div class="pause-banner">
+        <span>⏸️ AUCTION IS PAUSED BY HOST</span>
+        ${pin ? `
+          <button class="btn btn-gold btn-xs" data-action="host_pause">▶ Resume Auction</button>
+        ` : `
+          <span style="font-size:12px; font-weight:normal;">Waiting for host to resume...</span>
+        `}
+      </div>
+    ` : ''}
+
     <div class="grid-auction">
       <!-- Left Column: The Hammer Block & Bidding Console -->
       <div>
@@ -436,8 +485,8 @@ function renderLive(app) {
             </div>
 
             <div class="timer-box">
-              <div class="timer-label">Timer</div>
-              <div id="timer-display" class="timer-sec tabular">--s</div>
+              <div class="timer-label">${S.paused ? "Status" : "Timer"}</div>
+              <div id="timer-display" class="timer-sec tabular">${S.paused ? "PAUSED" : "--s"}</div>
             </div>
           </div>
 
@@ -445,29 +494,31 @@ function renderLive(app) {
           <div class="paddles">
             ${userTeam ? `
               <div class="quick-bids">
-                <button class="btn btn-primary btn-lg" data-action="bid" data-arg="${minNextBid}" ${!canBid || minNextBid > userMax ? "disabled" : ""} onclick="bidAmt(${minNextBid})">
+                <button class="btn btn-primary btn-lg" data-action="bid" data-arg="${minNextBid}" ${!canBid || minNextBid > userMax ? "disabled" : ""}>
                   Bid ${minNextBid}M
                 </button>
-                <button class="btn btn-primary btn-lg" data-action="bid" data-arg="${r1(minNextBid + 0.5)}" ${!canBid || r1(minNextBid + 0.5) > userMax ? "disabled" : ""} onclick="bidAmt(${r1(minNextBid + 0.5)})">
+                <button class="btn btn-primary btn-lg" data-action="bid" data-arg="${r1(minNextBid + 0.5)}" ${!canBid || r1(minNextBid + 0.5) > userMax ? "disabled" : ""}>
                   +0.5M (${r1(minNextBid + 0.5)}M)
                 </button>
-                <button class="btn btn-primary btn-lg" data-action="bid" data-arg="${r1(minNextBid + 1.0)}" ${!canBid || r1(minNextBid + 1.0) > userMax ? "disabled" : ""} onclick="bidAmt(${r1(minNextBid + 1.0)})">
+                <button class="btn btn-primary btn-lg" data-action="bid" data-arg="${r1(minNextBid + 1.0)}" ${!canBid || r1(minNextBid + 1.0) > userMax ? "disabled" : ""}>
                   +1.0M (${r1(minNextBid + 1.0)}M)
                 </button>
               </div>
 
               <div class="custom-bid-row">
                 <input type="number" step="0.1" id="custom-bid-input" placeholder="Custom M" value="${customBidVal}" style="margin:0; width:130px;">
-                <button class="btn btn-secondary" style="flex:1" data-action="custom_bid" ${!canBid ? "disabled" : ""} onclick="submitCustomBid()">
+                <button class="btn btn-secondary" style="flex:1" data-action="custom_bid" ${!canBid ? "disabled" : ""}>
                   Submit Bid
                 </button>
-                <button class="btn btn-danger" data-action="skip" ${isLeader || hasSkipped ? "disabled" : ""} onclick="skipLot()">
+                <button class="btn btn-danger" data-action="skip" ${isLeader || hasSkipped || S.paused ? "disabled" : ""}>
                   ${hasSkipped ? "Skipped" : "Pass / Skip"}
                 </button>
               </div>
 
               <div style="font-size:13px; margin-top:8px;" class="text-muted">
-                ${isLeader ? `
+                ${S.paused ? `
+                  <span style="color:#fbbf24;">Auction paused by host. Bidding temporarily suspended.</span>
+                ` : isLeader ? `
                   <span style="color:#34d399; font-weight:700;">★ You are currently the highest bidder!</span>
                 ` : hasSkipped ? `
                   <span style="color:#f87171;">You passed on this player.</span>
@@ -483,27 +534,48 @@ function renderLive(app) {
           </div>
         </div>
 
-        <!-- Host Quick Reset Card -->
-        <div class="card" style="margin-top:20px; border-color:rgba(239,68,68,0.25);">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <!-- Host Live Master Control Bar -->
+        <div class="card" style="margin-top:20px; border-color:rgba(245,158,11,0.35);">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:8px;">
             <div>
-              <strong style="font-size:13px; color:#fca5a5;">Host Controls</strong>
-              <div class="text-dim">Reset room back to lobby</div>
+              <strong style="font-size:14px; color:#fbbf24;">👑 Host Master Commands</strong>
+              <div class="text-dim">Higher authority over the live auction</div>
             </div>
-            <div style="display:flex; gap:8px;">
-              <input type="password" id="live-host-pin" placeholder="PIN" value="${pin}" style="width:90px; margin:0;" oninput="onPinChange(this.value)">
-              <button class="btn btn-danger" data-action="reset" onclick="resetAuction()">Reset Auction</button>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input type="password" id="live-host-pin" placeholder="Enter Host PIN" value="${pin}" style="width:130px; margin:0;" oninput="onPinChange(this.value)">
+              <button class="btn btn-secondary btn-xs" data-action="change_pin_dialog">🔑 PIN</button>
             </div>
+          </div>
+
+          <div class="host-controls-grid">
+            <button class="btn ${S.paused ? 'btn-gold' : 'btn-secondary'} btn-xs" data-action="host_pause">
+              ${S.paused ? '▶ Resume' : '⏸️ Pause Clock'}
+            </button>
+            <button class="btn btn-gold btn-xs" data-action="host_force_sell">
+              🔨 Sell Now (Hammer)
+            </button>
+            <button class="btn btn-secondary btn-xs" data-action="host_force_unsold">
+              ⏩ Pass Unsold
+            </button>
+            <button class="btn btn-secondary btn-xs" data-action="host_undo_bid">
+              ↩️ Undo Last Bid
+            </button>
+            <button class="btn btn-danger btn-xs" data-action="reset">
+              🔄 Reset to Lobby
+            </button>
           </div>
         </div>
       </div>
 
       <!-- Right Column: Live Standings & Activity Log -->
       <div>
-        <!-- Teams Leaderboard -->
+        <!-- Teams Leaderboard with Host Edit / Kick Controls -->
         <div class="card">
           <div class="card-header">
-            <div class="card-title">📊 Live Standings</div>
+            <div class="card-title">
+              📊 Live Standings
+              ${pin ? '<span class="host-badge-pill">👑 Host</span>' : ''}
+            </div>
             <span class="text-muted tabular" style="font-size:12px;">Cap: 10 Buys</span>
           </div>
           <div class="table-container">
@@ -514,6 +586,7 @@ function renderLive(app) {
                   <th>Squad</th>
                   <th>Purse</th>
                   <th>Status</th>
+                  ${pin ? '<th style="text-align:right;">Host</th>' : ''}
                 </tr>
               </thead>
               <tbody>
@@ -534,6 +607,12 @@ function renderLive(app) {
                       <td>
                         ${isCurLeader ? '<span style="color:#fbbf24; font-weight:700;">👑 Top</span>' : isSkipped ? '<span style="color:#64748b; font-size:12px;">Pass</span>' : '<span style="color:#34d399; font-size:12px;">Active</span>'}
                       </td>
+                      ${pin ? `
+                        <td style="text-align:right;">
+                          <button class="btn btn-secondary btn-xs" data-action="open_edit_team" data-arg="${id}">✏️</button>
+                          <button class="btn btn-danger btn-xs" data-action="remove_team" data-arg="${id}">🗑️</button>
+                        </td>
+                      ` : ''}
                     </tr>
                   `;
                 }).join("")}
@@ -576,8 +655,8 @@ function renderDone(app) {
         All available player lots have concluded. Below are the final 11-player squads and remaining purses for every franchise.
       </p>
       <div style="display:flex; justify-content:center; gap:10px; align-items:center;">
-        <input type="password" placeholder="Host PIN" value="${pin}" style="max-width:140px; margin:0;" oninput="onPinChange(this.value)">
-        <button class="btn btn-gold btn-lg" data-action="reset" onclick="resetAuction()">Start New Auction</button>
+        <input type="password" placeholder="Enter Host PIN" value="${pin}" style="max-width:160px; margin:0;" oninput="onPinChange(this.value)">
+        <button class="btn btn-gold btn-lg" data-action="reset">Start New Auction</button>
       </div>
     </div>
 
@@ -621,6 +700,40 @@ function renderDone(app) {
   `;
 }
 
+/* =========================================================
+   HOST MODAL: EDIT TEAM
+   ========================================================= */
+function renderEditModal(app, teamId, team) {
+  const modalEl = document.createElement("div");
+  modalEl.className = "modal-backdrop";
+  modalEl.id = "edit-modal-backdrop";
+  modalEl.innerHTML = `
+    <div class="modal">
+      <div class="card-header" style="margin-bottom:16px;">
+        <div class="card-title text-gold">✏️ Edit Franchise Team</div>
+        <button class="btn btn-secondary btn-xs" data-action="close_edit_modal">✕</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Franchise Name</label>
+        <input type="text" id="edit-team-name" value="${team.team}" maxlength="24">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Captain Name</label>
+        <input type="text" id="edit-team-cap" value="${team.cap}" maxlength="24">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Purse Budget (M)</label>
+        <input type="number" step="0.5" id="edit-team-budget" value="${team.budget}">
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
+        <button class="btn btn-secondary" data-action="close_edit_modal">Cancel</button>
+        <button class="btn btn-gold" data-action="save_edit_team" data-arg="${teamId}">Save Changes</button>
+      </div>
+    </div>
+  `;
+  app.appendChild(modalEl);
+}
+
 // User Actions
 async function joinAuction() {
   const teamInput = $("#join-team");
@@ -650,6 +763,10 @@ async function addDemoTeams() {
 }
 
 async function startAuction() {
+  if (!pin) {
+    alert("Please enter the Host PIN to start the auction.");
+    return;
+  }
   const res = await api("start");
   if (res && res.ok) {
     poll();
@@ -679,6 +796,10 @@ async function skipLot() {
 }
 
 async function resetAuction() {
+  if (!pin) {
+    alert("Please enter the Host PIN to reset the auction.");
+    return;
+  }
   if (confirm("Reset auction back to lobby? All current squad purchases will be cleared.")) {
     await act("reset");
   }
@@ -687,6 +808,76 @@ async function resetAuction() {
 function onPinChange(val) {
   pin = val;
   sessionStorage.setItem("host_pin", pin);
+  // Re-render to update host controls availability
+  render();
+}
+
+async function hostChangePinDialog() {
+  if (!pin) {
+    alert("Please enter the current Host PIN first.");
+    return;
+  }
+  const newPin = prompt("Enter new Host PIN (minimum 3 digits):");
+  if (!newPin) return;
+  const res = await api("host_update_pin", { newPin: newPin.trim() });
+  if (res && res.ok) {
+    pin = newPin.trim();
+    sessionStorage.setItem("host_pin", pin);
+    alert("Host PIN has been successfully updated!");
+    render();
+  }
+}
+
+async function hostRemoveTeam(teamId) {
+  if (!pin) {
+    alert("Please enter Host PIN to remove teams.");
+    return;
+  }
+  const team = S.teams[teamId];
+  const name = team ? team.team : "this team";
+  if (confirm(`Are you sure you want to kick "${name}" from the auction?`)) {
+    const res = await api("host_remove_team", { targetId: teamId });
+    if (res && res.ok) {
+      poll();
+    }
+  }
+}
+
+function hostOpenEditTeam(teamId) {
+  if (!pin) {
+    alert("Please enter Host PIN to edit teams.");
+    return;
+  }
+  editingTeamId = teamId;
+  render();
+}
+
+function hostCloseEditModal() {
+  editingTeamId = null;
+  const modal = $("#edit-modal-backdrop");
+  if (modal) modal.remove();
+}
+
+async function hostSaveEditTeam(teamId) {
+  const nameInput = $("#edit-team-name");
+  const capInput = $("#edit-team-cap");
+  const budgetInput = $("#edit-team-budget");
+  if (!nameInput || !capInput || !budgetInput) return;
+
+  const team = nameInput.value.trim();
+  const cap = capInput.value.trim();
+  const budget = parseFloat(budgetInput.value);
+
+  if (!team || !cap) {
+    alert("Franchise name and Captain name cannot be empty.");
+    return;
+  }
+
+  const res = await api("host_edit_team", { targetId: teamId, team, cap, budget });
+  if (res && res.ok) {
+    hostCloseEditModal();
+    poll();
+  }
 }
 
 // Delegated Event Listeners (Bypasses all CSP inline-event restrictions)
@@ -706,6 +897,15 @@ document.addEventListener("click", e => {
   else if (action === "skip") skipLot();
   else if (action === "reset") resetAuction();
   else if (action === "toggle_sound") toggleSound();
+  else if (action === "change_pin_dialog") hostChangePinDialog();
+  else if (action === "remove_team") hostRemoveTeam(arg);
+  else if (action === "open_edit_team") hostOpenEditTeam(arg);
+  else if (action === "close_edit_modal") hostCloseEditModal();
+  else if (action === "save_edit_team") hostSaveEditTeam(arg);
+  else if (action === "host_pause") act("host_pause");
+  else if (action === "host_force_sell") act("host_force_sell");
+  else if (action === "host_force_unsold") act("host_force_unsold");
+  else if (action === "host_undo_bid") act("host_undo_bid");
 });
 
 document.addEventListener("input", e => {

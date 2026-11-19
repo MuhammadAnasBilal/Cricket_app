@@ -4,22 +4,37 @@ Live real-time Fantasy Cricket Player Auction web application. Host live drafts 
 
 ---
 
+## 👑 Host Master Controls & PIN
+
+* **Initial Host PIN:** `2567` (The Host enters the PIN into the Host Controls box; no pre-filled values).
+* **Team Management (Lobby & Live):**
+  * **✏️ Edit Any Team:** The host can update any franchise name, captain name, or adjust purse budgets on the fly.
+  * **🗑️ Kick / Remove Teams:** Remove unwanted, inactive, or duplicate teams with one click.
+* **Higher Authority Live Commands:**
+  * **⏸️ Pause / Resume Auction Clock:** Stop or restart the countdown timer at any time.
+  * **🔨 Sell Now (Hammer Down):** Instantly awards the player to the highest bidder without waiting for the clock.
+  * **⏩ Pass / Mark Unsold:** Immediately marks the player unsold and brings up the next lot.
+  * **↩️ Undo Last Bid:** Revert accidental bids or misclicks.
+  * **🔑 Change Host PIN:** The host can change their PIN to any new PIN at any time.
+  * **🔄 Reset Tournament:** Restores all team budgets to 100M and returns to the lobby.
+
+---
+
 ## ⚡ Zero-Config: Works Out of the Box!
 
-- **No external database required to start:** Works instantly in-memory!
-- **Default Host PIN:** `1234` (use this in the host controls to start or reset the auction).
-- **Solo Mode / Quick Test:** Click **"+ Add Demo Teams"** in the lobby to instantly add 3 rival franchises (Lahore Qalandars, Karachi Kings, Islamabad United) with autonomous bidding AI!
-- **Sound Effects:** Live gavel taps and bid chimes synthesized with Web Audio API.
+* **No external database required:** Operates smoothly out of the box using resilient in-memory state.
+* **Solo Mode / Quick Test:** Click **"+ Add Demo Teams"** in the lobby to load 3 rival franchises (*Lahore Qalandars*, *Karachi Kings*, *Islamabad United*) equipped with autonomous bidding AI.
+* **Audio Feedback:** Real-time wooden gavel taps and bid chimes synthesized with Web Audio API.
 
 ---
 
 ## 🚀 Running Locally
 
-1. Open your terminal in this project folder:
+1. In this project folder:
    ```bash
    npm start
    ```
-2. Open your browser at:
+2. Open your browser:
    ```
    http://localhost:3000
    ```
@@ -28,14 +43,8 @@ Live real-time Fantasy Cricket Player Auction web application. Host live drafts 
 
 ## 🌐 Deploying to Vercel
 
-1. Push this repository to GitHub (already configured).
-2. Go to [Vercel](https://vercel.com/new) and import the repository.
-3. Deploy with default settings. It will work out of the box!
-
-### Optional: Distributed Multi-Instance Sync (Upstash Redis)
-If you are running large public auctions across many geographical regions and want distributed persistent Redis storage:
-1. Go to your project on Vercel > **Storage** > **Connect Database** > choose **Upstash Redis** (free).
-2. (Optional) In **Settings** > **Environment Variables**, set `HOST_PIN` to your private PIN (defaults to `1234` if unset).
+1. Push this repository to GitHub (connected to `MuhammadAnasBilal/Cricket_app`).
+2. Vercel automatically deploys every commit with zero extra configuration needed.
 
 ---
 

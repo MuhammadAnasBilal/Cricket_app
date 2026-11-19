@@ -19,8 +19,7 @@ const U = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
 const T = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
 const hasRedis = !!(U && T);
 
-const DEFAULT_PIN = "1234";
-const HOST_PIN = process.env.HOST_PIN || DEFAULT_PIN;
+const INITIAL_PIN = "2567";
 
 const BASE = 0.5, SQUAD = 11, BUYS = SQUAD - 1, BUDGET = 100, TURN = 15000, FIRST = 25000, MAXTEAMS = 40;
 const r1 = x => Math.round(x * 10) / 10;
@@ -34,6 +33,9 @@ const same = (a, b) => {
   catch (e) { return false; }
 };
 
+const getHostPin = s => (s && s.hostPin) || process.env.HOST_PIN || INITIAL_PIN;
+const hostOk = (s, b) => same(b.pin || "", getHostPin(s));
+
 // Global in-memory + temp file fallback for zero-config operation
 const TMP_PATH = path.join(process.platform === "win32" ? (process.env.TEMP || ".") : "/tmp", "cricket_auction_state.json");
 
@@ -45,7 +47,20 @@ function readFallback() {
       return global.__AUCTION_MEM_STATE__;
     }
   } catch (e) { }
-  global.__AUCTION_MEM_STATE__ = { phase: "lobby", teams: {}, log: [], order: [], idx: 0, high: 0, by: null, skip: [], end: 0 };
+  global.__AUCTION_MEM_STATE__ = {
+    phase: "lobby",
+    teams: {},
+    log: [],
+    order: [],
+    idx: 0,
+    high: 0,
+    by: null,
+    skip: [],
+    end: 0,
+    paused: false,
+    pausedRemaining: 0,
+    hostPin: INITIAL_PIN
+  };
   return global.__AUCTION_MEM_STATE__;
 }
 
@@ -127,6 +142,8 @@ function next(s, now) {
   s.high = 0;
   s.by = null;
   s.skip = [];
+  s.prevHigh = 0;
+  s.prevBy = null;
   s.lastBidTime = now;
   if (s.idx >= s.order.length || !Object.values(s.teams).some(open)) {
     s.phase = "done";
@@ -138,7 +155,7 @@ function next(s, now) {
 }
 
 function botBidAI(s, now) {
-  if (s.phase !== "live" || !s.order || s.idx >= s.order.length) return false;
+  if (s.phase !== "live" || s.paused || !s.order || s.idx >= s.order.length) return false;
   const curP = getPlayer(s.order[s.idx]);
   if (!curP) return false;
 
@@ -146,7 +163,7 @@ function botBidAI(s, now) {
   if (!botIds.length) return false;
 
   const elapsed = now - (s.lastBidTime || (s.end - FIRST));
-  if (elapsed < 2000) return false; // Realistic thinking pause
+  if (elapsed < 2000) return false;
 
   for (const botId of botIds) {
     if (s.by === botId) continue;
@@ -159,6 +176,8 @@ function botBidAI(s, now) {
     const nextBid = s.high === 0 ? (curP.b || BASE) : r1(s.high + 0.5);
 
     if (nextBid <= maxBid(bot) && nextBid <= maxValuation) {
+      s.prevHigh = s.high;
+      s.prevBy = s.by;
       s.high = nextBid;
       s.by = botId;
       s.end = now + TURN;
@@ -176,6 +195,8 @@ function botBidAI(s, now) {
 
 function advance(s, now) {
   if (s.phase !== "live") return false;
+  if (s.paused) return false;
+
   let changed = botBidAI(s, now);
 
   const el = Object.keys(s.teams).filter(u => open(s.teams[u]));
@@ -224,6 +245,8 @@ function view(s, now) {
     by: s.by,
     skip: s.skip || [],
     end: s.end || 0,
+    paused: !!s.paused,
+    pausedRemaining: s.pausedRemaining || 0,
     log: s.log || [],
     now,
     base: curP ? (curP.b || BASE) : BASE,
@@ -239,7 +262,6 @@ module.exports = async (req, res) => {
   try {
     const b = req.body || {}, now = Date.now(), a = b.a;
     const auth = s => s.teams[b.id] && typeof b.token === "string" && same(s.teams[b.id].token, b.token);
-    const hostOk = () => same(b.pin || "", HOST_PIN);
 
     if (a === "state") {
       let s = await load();
@@ -284,9 +306,11 @@ module.exports = async (req, res) => {
       return res.json({ ok: 1 });
     }
 
+    // Host: Start or Reset
     if (a === "start" || a === "reset") {
-      if (!hostOk()) return res.json({ err: "Wrong host PIN (default is 1234)" });
+      let err = null;
       const out = await locked(async s => {
+        if (!hostOk(s, b)) { err = "Incorrect Host PIN"; return false; }
         if (a === "reset") {
           for (const t of Object.values(s.teams)) {
             t.budget = BUDGET;
@@ -297,9 +321,14 @@ module.exports = async (req, res) => {
           s.high = 0;
           s.by = null;
           s.skip = [];
+          s.paused = false;
+          s.pausedRemaining = 0;
           return true;
         }
-        if (Object.keys(s.teams).length < 2 || s.phase !== "lobby") return false;
+        if (Object.keys(s.teams).length < 2 || s.phase !== "lobby") {
+          err = "Need at least 2 teams in the lobby to start";
+          return false;
+        }
         const o = P.map((_, i) => i);
         for (let i = o.length - 1; i > 0; i--) {
           const j = crypto.randomInt(i + 1);
@@ -315,18 +344,140 @@ module.exports = async (req, res) => {
           skip: [],
           end: now + FIRST,
           lastBidTime: now,
+          paused: false,
+          pausedRemaining: 0,
           base: curP ? (curP.b || BASE) : BASE,
           log: []
         });
         return true;
       });
-      return res.json(out ? { ok: 1 } : { err: "Need 2+ teams in the lobby to start" });
+      return res.json(err ? { err } : { ok: 1 });
     }
 
+    // Host: Edit Team
+    if (a === "host_edit_team") {
+      let err = null;
+      await locked(async s => {
+        if (!hostOk(s, b)) { err = "Incorrect Host PIN"; return; }
+        const tid = b.targetId;
+        if (!s.teams[tid]) { err = "Team not found"; return; }
+        const t = s.teams[tid];
+        if (b.team) t.team = clean(b.team);
+        if (b.cap) t.cap = clean(b.cap);
+        if (b.budget !== undefined && !isNaN(Number(b.budget))) {
+          t.budget = r1(Math.max(0, Number(b.budget)));
+        }
+        s.log.unshift(`Host updated team: ${t.team}`);
+      });
+      return res.json(err ? { err } : { ok: 1 });
+    }
+
+    // Host: Remove Team
+    if (a === "host_remove_team") {
+      let err = null;
+      await locked(async s => {
+        if (!hostOk(s, b)) { err = "Incorrect Host PIN"; return; }
+        const tid = b.targetId;
+        if (!s.teams[tid]) { err = "Team not found"; return; }
+        const tName = s.teams[tid].team;
+        delete s.teams[tid];
+        if (s.by === tid) {
+          s.by = null;
+          s.high = 0;
+        }
+        s.skip = (s.skip || []).filter(x => x !== tid);
+        s.log.unshift(`Host removed team: ${tName}`);
+      });
+      return res.json(err ? { err } : { ok: 1 });
+    }
+
+    // Host: Pause / Resume Auction
+    if (a === "host_pause") {
+      let err = null;
+      await locked(async s => {
+        if (!hostOk(s, b)) { err = "Incorrect Host PIN"; return; }
+        if (s.phase !== "live") { err = "Auction is not live"; return; }
+        if (s.paused) {
+          s.paused = false;
+          s.end = now + (s.pausedRemaining || FIRST);
+          s.lastBidTime = now;
+          s.log.unshift("Auction resumed by Host");
+        } else {
+          s.paused = true;
+          s.pausedRemaining = Math.max(0, s.end - now);
+          s.log.unshift("Auction paused by Host");
+        }
+      });
+      return res.json(err ? { err } : { ok: 1 });
+    }
+
+    // Host: Force Sell (Hammer Down immediately)
+    if (a === "host_force_sell") {
+      let err = null;
+      await locked(async s => {
+        if (!hostOk(s, b)) { err = "Incorrect Host PIN"; return; }
+        if (s.phase !== "live") { err = "Auction is not live"; return; }
+        s.paused = false;
+        s.end = 0;
+        advance(s, Date.now());
+      });
+      return res.json(err ? { err } : { ok: 1 });
+    }
+
+    // Host: Force Unsold (Pass player immediately)
+    if (a === "host_force_unsold") {
+      let err = null;
+      await locked(async s => {
+        if (!hostOk(s, b)) { err = "Incorrect Host PIN"; return; }
+        if (s.phase !== "live") { err = "Auction is not live"; return; }
+        s.paused = false;
+        s.by = null;
+        s.end = 0;
+        advance(s, Date.now());
+      });
+      return res.json(err ? { err } : { ok: 1 });
+    }
+
+    // Host: Undo Last Bid
+    if (a === "host_undo_bid") {
+      let err = null;
+      await locked(async s => {
+        if (!hostOk(s, b)) { err = "Incorrect Host PIN"; return; }
+        if (s.phase !== "live") { err = "Auction is not live"; return; }
+        if (s.prevHigh !== undefined && s.by) {
+          const oldHigh = s.high;
+          const oldBy = s.teams[s.by] ? s.teams[s.by].team : "bidder";
+          s.high = s.prevHigh;
+          s.by = s.prevBy;
+          s.end = now + TURN;
+          s.lastBidTime = now;
+          s.log.unshift(`Host cancelled ${oldHigh}M bid from ${oldBy}`);
+        } else {
+          err = "No previous bid to undo on this player";
+        }
+      });
+      return res.json(err ? { err } : { ok: 1 });
+    }
+
+    // Host: Update Host PIN
+    if (a === "host_update_pin") {
+      let err = null;
+      await locked(async s => {
+        if (!hostOk(s, b)) { err = "Incorrect current Host PIN"; return; }
+        const newPin = clean(b.newPin);
+        if (!newPin || newPin.length < 3) { err = "New PIN must be at least 3 digits"; return; }
+        s.hostPin = newPin;
+        s.log.unshift("Host PIN was updated");
+      });
+      return res.json(err ? { err } : { ok: 1 });
+    }
+
+    // Bidding & Skipping
     if (a === "bid" || a === "skip") {
       let err = null;
       await locked(async s => {
         advance(s, Date.now());
+        if (s.paused) { err = "Auction is currently paused by the Host"; return; }
         if (!auth(s)) { err = "Not a player in this auction"; return; }
         if (s.phase !== "live" || b.lot !== s.idx) { err = "Player is already sold or skipped"; return; }
         const t = s.teams[b.id];
@@ -342,6 +493,8 @@ module.exports = async (req, res) => {
           err = `Invalid bid (min: ${minP}M, your max: ${maxBid(t)}M)`;
           return;
         }
+        s.prevHigh = s.high;
+        s.prevBy = s.by;
         s.high = m;
         s.by = b.id;
         s.end = Date.now() + TURN;
