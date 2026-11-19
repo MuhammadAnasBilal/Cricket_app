@@ -19,8 +19,6 @@ const U = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
 const T = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
 const hasRedis = !!(U && T);
 
-const INITIAL_PIN = "2567";
-
 const BASE = 0.5, SQUAD = 11, BUYS = SQUAD - 1, BUDGET = 100, TURN = 15000, FIRST = 25000, MAXTEAMS = 40;
 const r1 = x => Math.round(x * 10) / 10;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -33,8 +31,10 @@ const same = (a, b) => {
   catch (e) { return false; }
 };
 
-const getHostPin = s => (s && s.hostPin) || process.env.HOST_PIN || INITIAL_PIN;
-const hostOk = (s, b) => same(b.pin || "", getHostPin(s));
+function hostOk(s, b) {
+  if (!s.hostPin) return true;
+  return same(b.pin || "", s.hostPin);
+}
 
 // Global in-memory + temp file fallback for zero-config operation
 const TMP_PATH = path.join(process.platform === "win32" ? (process.env.TEMP || ".") : "/tmp", "cricket_auction_state.json");
@@ -59,7 +59,7 @@ function readFallback() {
     end: 0,
     paused: false,
     pausedRemaining: 0,
-    hostPin: INITIAL_PIN
+    hostPin: null
   };
   return global.__AUCTION_MEM_STATE__;
 }
@@ -225,7 +225,7 @@ function advance(s, now) {
 
 function view(s, now) {
   const teams = {};
-  for (const [u, t] of Object.entries(s.teams)) {
+  for (const [u, t] of Object.entries(s.teams || {})) {
     teams[u] = {
       team: t.team,
       cap: t.cap,
@@ -247,6 +247,7 @@ function view(s, now) {
     end: s.end || 0,
     paused: !!s.paused,
     pausedRemaining: s.pausedRemaining || 0,
+    hasHostPin: !!s.hostPin,
     log: s.log || [],
     now,
     base: curP ? (curP.b || BASE) : BASE,
@@ -306,11 +307,42 @@ module.exports = async (req, res) => {
       return res.json({ ok: 1 });
     }
 
+    // Host: Set or Claim Host PIN
+    if (a === "set_host_pin") {
+      let err = null;
+      await locked(async s => {
+        if (s.hostPin && !same(b.currentPin || b.pin || "", s.hostPin)) {
+          err = "Incorrect current Host PIN";
+          return;
+        }
+        const newPin = clean(b.newPin || b.pin);
+        if (!newPin || newPin.length < 3) {
+          err = "Host PIN must be at least 3 digits";
+          return;
+        }
+        s.hostPin = newPin;
+        s.log.unshift("Host PIN was configured for this room.");
+      });
+      return res.json(err ? { err } : { ok: 1 });
+    }
+
     // Host: Start or Reset
     if (a === "start" || a === "reset") {
       let err = null;
       const out = await locked(async s => {
-        if (!hostOk(s, b)) { err = "Incorrect Host PIN"; return false; }
+        // If room has no PIN yet, claim it with the provided PIN
+        if (!s.hostPin) {
+          const givenPin = clean(b.pin);
+          if (!givenPin || givenPin.length < 3) {
+            err = "Please enter a Host PIN (at least 3 characters) to claim and start the room";
+            return false;
+          }
+          s.hostPin = givenPin;
+        } else if (!same(b.pin || "", s.hostPin)) {
+          err = "Incorrect Host PIN";
+          return false;
+        }
+
         if (a === "reset") {
           for (const t of Object.values(s.teams)) {
             t.budget = BUDGET;
@@ -359,6 +391,7 @@ module.exports = async (req, res) => {
       let err = null;
       await locked(async s => {
         if (!hostOk(s, b)) { err = "Incorrect Host PIN"; return; }
+        if (!s.hostPin && b.pin && b.pin.length >= 3) s.hostPin = clean(b.pin);
         const tid = b.targetId;
         if (!s.teams[tid]) { err = "Team not found"; return; }
         const t = s.teams[tid];
@@ -377,6 +410,7 @@ module.exports = async (req, res) => {
       let err = null;
       await locked(async s => {
         if (!hostOk(s, b)) { err = "Incorrect Host PIN"; return; }
+        if (!s.hostPin && b.pin && b.pin.length >= 3) s.hostPin = clean(b.pin);
         const tid = b.targetId;
         if (!s.teams[tid]) { err = "Team not found"; return; }
         const tName = s.teams[tid].team;
@@ -387,6 +421,43 @@ module.exports = async (req, res) => {
         }
         s.skip = (s.skip || []).filter(x => x !== tid);
         s.log.unshift(`Host removed team: ${tName}`);
+      });
+      return res.json(err ? { err } : { ok: 1 });
+    }
+
+    // Host: Clear All Teams
+    if (a === "host_clear_all_teams") {
+      let err = null;
+      await locked(async s => {
+        if (!hostOk(s, b)) { err = "Incorrect Host PIN"; return; }
+        s.teams = {};
+        s.log = [];
+        s.high = 0;
+        s.by = null;
+        s.skip = [];
+      });
+      return res.json(err ? { err } : { ok: 1 });
+    }
+
+    // Host: Wipe Room Completely Clean
+    if (a === "wipe_room") {
+      let err = null;
+      await locked(async s => {
+        if (s.hostPin && !same(b.pin || "", s.hostPin)) {
+          err = "Incorrect Host PIN";
+          return;
+        }
+        s.phase = "lobby";
+        s.teams = {};
+        s.log = [];
+        s.order = [];
+        s.idx = 0;
+        s.high = 0;
+        s.by = null;
+        s.skip = [];
+        s.paused = false;
+        s.pausedRemaining = 0;
+        s.hostPin = null; // Clears PIN so host can recreate it fresh
       });
       return res.json(err ? { err } : { ok: 1 });
     }
@@ -463,7 +534,10 @@ module.exports = async (req, res) => {
     if (a === "host_update_pin") {
       let err = null;
       await locked(async s => {
-        if (!hostOk(s, b)) { err = "Incorrect current Host PIN"; return; }
+        if (s.hostPin && !same(b.pin || "", s.hostPin)) {
+          err = "Incorrect current Host PIN";
+          return;
+        }
         const newPin = clean(b.newPin);
         if (!newPin || newPin.length < 3) { err = "New PIN must be at least 3 digits"; return; }
         s.hostPin = newPin;

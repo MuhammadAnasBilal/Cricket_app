@@ -7,7 +7,7 @@ let lastStateStr = "";
 let clockOffset = 0;
 let customBidVal = "";
 let soundEnabled = localStorage.getItem("auction_sound") !== "false";
-let pin = sessionStorage.getItem("host_pin") || ""; // No default prefill
+let pin = sessionStorage.getItem("host_pin") || ""; // No default pre-filled PIN
 let me = JSON.parse(localStorage.getItem("cricket_auction_me") || "null");
 let previousHighBid = 0;
 let previousLot = -1;
@@ -161,6 +161,7 @@ async function poll() {
     high: S.high,
     by: S.by,
     paused: S.paused,
+    hasHostPin: S.hasHostPin,
     skipLen: (S.skip || []).length,
     teams: S.teams,
     logLen: (S.log || []).length,
@@ -268,7 +269,6 @@ function render() {
     renderDone(app);
   }
 
-  // Render Edit Modal if active
   if (editingTeamId && S.teams[editingTeamId]) {
     renderEditModal(app, editingTeamId, S.teams[editingTeamId]);
   }
@@ -282,11 +282,28 @@ function renderLobby(app) {
   const userTeam = me ? S.teams[me.id] : null;
 
   app.innerHTML = `
-    <!-- Demo Mode Banner -->
+    <!-- Host Setup Banner if No PIN Set Yet -->
+    ${!S.hasHostPin ? `
+      <div class="card" style="border-color: rgba(245,158,11,0.5); background: linear-gradient(145deg, #182c22, #122119); margin-bottom:20px;">
+        <div class="card-header" style="margin-bottom:10px;">
+          <div class="card-title text-gold">👑 Room Setup: Create Host PIN</div>
+          <span class="host-badge-pill">Host Setup</span>
+        </div>
+        <p class="text-muted" style="margin-bottom:14px; font-size:14px;">
+          No Host PIN has been set for this room yet. Enter a secret PIN below to claim the Host role and manage this auction:
+        </p>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <input type="password" id="create-host-pin" placeholder="Create your Host PIN" style="max-width:260px; margin:0;">
+          <button class="btn btn-gold btn-lg" data-action="set_initial_pin">Claim Host Role & Set PIN</button>
+        </div>
+      </div>
+    ` : ''}
+
+    <!-- Optional Quick Test Demo Banner -->
     <div class="demo-banner">
       <div>
-        <strong style="color:#fbbf24; display:block; margin-bottom:2px;">⚡ Solo Mode / Quick Test</strong>
-        <span class="text-muted" style="font-size:13px;">Testing alone? Add 3 rival teams with autonomous bidding AI to start the auction right away!</span>
+        <strong style="color:#fbbf24; display:block; margin-bottom:2px;">⚡ Solo Mode / Quick Test (Optional)</strong>
+        <span class="text-muted" style="font-size:13px;">Testing alone? Add 3 rival teams with autonomous bidding AI to test the auction!</span>
       </div>
       <button class="btn btn-secondary" data-action="add_bots">+ Add Demo Teams</button>
     </div>
@@ -355,11 +372,18 @@ function renderLobby(app) {
           👥 Teams in Lobby (${teamIds.length})
           ${pin ? '<span class="host-badge-pill">👑 Host Mode Enabled</span>' : ''}
         </div>
-        <span class="text-muted" style="font-size:13px;">Minimum 2 teams required to start</span>
+        <div style="display:flex; gap:8px; align-items:center;">
+          ${pin && teamIds.length > 0 ? `
+            <button class="btn btn-danger btn-xs" data-action="clear_all_teams">🧹 Clear All Teams</button>
+          ` : ''}
+          <span class="text-muted" style="font-size:13px;">Min 2 teams to start</span>
+        </div>
       </div>
 
       ${teamIds.length === 0 ? `
-        <p class="text-muted" style="padding:16px 0; text-align:center;">No teams joined yet. Register your team above or click "+ Add Demo Teams"!</p>
+        <p class="text-muted" style="padding:24px 0; text-align:center;">
+          The lobby is currently empty. Register your team above or invite friends to join!
+        </p>
       ` : `
         <div class="table-container">
           <table>
@@ -401,21 +425,22 @@ function renderLobby(app) {
     <div class="card" style="border-color: rgba(245,158,11,0.35);">
       <div class="card-header">
         <div class="card-title text-gold">👑 Host Master Controls</div>
-        <span class="text-dim">Host authorizes all major controls</span>
+        ${pin ? '<span class="host-badge-pill">✓ Unlocked</span>' : '<span class="text-dim">Locked</span>'}
       </div>
       <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
         <input type="password" id="host-pin" placeholder="Enter Host PIN" value="${pin}" style="max-width:220px; margin:0;" oninput="onPinChange(this.value)">
         <button class="btn btn-gold btn-lg" data-action="start" ${teamIds.length < 2 ? "disabled" : ""}>
           ▶ Start Auction Now
         </button>
-        <button class="btn btn-secondary" data-action="change_pin_dialog">
-          🔑 Change Host PIN
-        </button>
+        ${pin ? `
+          <button class="btn btn-secondary btn-xs" data-action="change_pin_dialog">🔑 Change PIN</button>
+          <button class="btn btn-danger btn-xs" data-action="wipe_room_dialog">🧹 Wipe Room</button>
+        ` : ''}
       </div>
       ${!pin ? `
         <p class="text-dim" style="margin-top:8px;">Enter your Host PIN above to unlock team editing, kicking, and starting permissions.</p>
       ` : `
-        <p class="text-muted" style="margin-top:8px; font-size:13px; color:#34d399;">✓ Host authenticated. You can now edit/remove teams from the table or start the auction.</p>
+        <p class="text-muted" style="margin-top:8px; font-size:13px; color:#34d399;">✓ Host authenticated. You have full administrative control over this auction room.</p>
       `}
     </div>
   `;
@@ -762,12 +787,38 @@ async function addDemoTeams() {
   }
 }
 
-async function startAuction() {
-  if (!pin) {
-    alert("Please enter the Host PIN to start the auction.");
+async function setInitialPin() {
+  const input = $("#create-host-pin");
+  if (!input) return;
+  const val = input.value.trim();
+  if (!val || val.length < 3) {
+    alert("Please enter a secret PIN of at least 3 digits to claim the Host role.");
     return;
   }
-  const res = await api("start");
+  const res = await api("set_host_pin", { newPin: val });
+  if (res && res.ok) {
+    pin = val;
+    sessionStorage.setItem("host_pin", pin);
+    alert("✓ Host PIN created successfully! You now have full Host controls.");
+    poll();
+  }
+}
+
+async function startAuction() {
+  let pinToUse = pin;
+  if (!pinToUse) {
+    const input = $("#host-pin");
+    if (input && input.value.trim()) {
+      pinToUse = input.value.trim();
+      onPinChange(pinToUse);
+    } else {
+      const prompted = prompt("Please enter a Host PIN to start the auction:");
+      if (!prompted) return;
+      pinToUse = prompted.trim();
+      onPinChange(pinToUse);
+    }
+  }
+  const res = await api("start", { pin: pinToUse });
   if (res && res.ok) {
     poll();
   }
@@ -808,13 +859,12 @@ async function resetAuction() {
 function onPinChange(val) {
   pin = val;
   sessionStorage.setItem("host_pin", pin);
-  // Re-render to update host controls availability
   render();
 }
 
 async function hostChangePinDialog() {
   if (!pin) {
-    alert("Please enter the current Host PIN first.");
+    alert("Please enter your current Host PIN first.");
     return;
   }
   const newPin = prompt("Enter new Host PIN (minimum 3 digits):");
@@ -825,6 +875,34 @@ async function hostChangePinDialog() {
     sessionStorage.setItem("host_pin", pin);
     alert("Host PIN has been successfully updated!");
     render();
+  }
+}
+
+async function hostClearAllTeams() {
+  if (!pin) {
+    alert("Please enter Host PIN to clear teams.");
+    return;
+  }
+  if (confirm("Remove ALL teams from the lobby and start with an empty room?")) {
+    const res = await api("host_clear_all_teams");
+    if (res && res.ok) {
+      poll();
+    }
+  }
+}
+
+async function hostWipeRoom() {
+  if (!pin) {
+    alert("Please enter Host PIN to wipe room.");
+    return;
+  }
+  if (confirm("Wipe room completely clean? This will remove all teams, reset the tournament, and reset the Host PIN so you can create a new one.")) {
+    const res = await api("wipe_room");
+    if (res && res.ok) {
+      pin = "";
+      sessionStorage.removeItem("host_pin");
+      poll();
+    }
   }
 }
 
@@ -891,6 +969,7 @@ document.addEventListener("click", e => {
 
   if (action === "join") joinAuction();
   else if (action === "add_bots") addDemoTeams();
+  else if (action === "set_initial_pin") setInitialPin();
   else if (action === "start") startAuction();
   else if (action === "bid") bidAmt(parseFloat(arg));
   else if (action === "custom_bid") submitCustomBid();
@@ -898,6 +977,8 @@ document.addEventListener("click", e => {
   else if (action === "reset") resetAuction();
   else if (action === "toggle_sound") toggleSound();
   else if (action === "change_pin_dialog") hostChangePinDialog();
+  else if (action === "clear_all_teams") hostClearAllTeams();
+  else if (action === "wipe_room_dialog") hostWipeRoom();
   else if (action === "remove_team") hostRemoveTeam(arg);
   else if (action === "open_edit_team") hostOpenEditTeam(arg);
   else if (action === "close_edit_modal") hostCloseEditModal();
@@ -922,6 +1003,10 @@ document.addEventListener("keydown", e => {
       joinAuction();
     } else if (e.target.id === "custom-bid-input") {
       submitCustomBid();
+    } else if (e.target.id === "create-host-pin") {
+      setInitialPin();
+    } else if (e.target.id === "host-pin") {
+      startAuction();
     }
   }
 });
@@ -930,6 +1015,7 @@ document.addEventListener("keydown", e => {
 window.joinAuction = joinAuction;
 window.addDemoTeams = addDemoTeams;
 window.startAuction = startAuction;
+window.setInitialPin = setInitialPin;
 window.bidAmt = bidAmt;
 window.submitCustomBid = submitCustomBid;
 window.skipLot = skipLot;
