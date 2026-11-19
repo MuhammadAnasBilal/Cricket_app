@@ -3,8 +3,11 @@ let S=null,last="",off=0,cv="",pin=sessionStorage.getItem("pin")||"",me=JSON.par
 function h(t,c,x){const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
 async function api(a,d,quiet){try{const x=await fetch("/api/auction",{method:"POST",headers:{"Content-Type":"application/json"},
  body:JSON.stringify({a,...d,id:me&&me.id,token:me&&me.token,pin})});const j=await x.json();
- if(j.err){if(!quiet)alert(j.err);return null}return j}catch(e){if(!quiet)alert("Network problem");return null}}
-async function poll(){const j=await api("state",{},true);if(!j)return;S=j.s;off=S.now-Date.now();
+ if(j.err){if(!quiet)alert(j.err);return {err:j.err}}return j}catch(e){if(!quiet)alert("Network problem");return null}}
+async function poll(){const j=await api("state",{},true);
+ if(!j){if(!S)$("#app").innerHTML='<h1>🏏 Fantasy Cricket Auction</h1><div class="card"><h2>⚠️ Connection Error</h2><p class="m">Could not reach the server.</p></div>';return}
+ if(j.err){if(!S)$("#app").innerHTML='<h1>🏏 Fantasy Cricket Auction</h1><div class="card"><h2>⚠️ Database Not Connected</h2><p class="m">'+j.err+'</p><p class="m" style="margin-top:8px">To fix this: Go to your Vercel Project dashboard &gt; <b>Storage</b> &gt; connect <b>Upstash Redis</b>.</p></div>';return}
+ S=j.s;off=S.now-Date.now();
  if(me&&!S.teams[me.id]){me=null;localStorage.removeItem("me")}
  const k=JSON.stringify({...S,now:0});if(k!==last){last=k;render()}}
 setInterval(poll,2000);poll();
@@ -17,7 +20,7 @@ function render(){const a=$("#app");a.replaceChildren(h("h1",0,"🏏 Fantasy Cri
 function lobby(a){const c=h("div","card");a.append(c);
  if(!me){c.append(h("h2",0,"Join the auction"));const t=h("input"),p=h("input"),b=h("button",0,"Join");
   t.placeholder="Team name";p.placeholder="Your name (captain)";t.maxLength=p.maxLength=24;
-  b.onclick=async()=>{const j=await api("join",{team:t.value,cap:p.value});if(j){me=j;localStorage.setItem("me",JSON.stringify(j));poll()}};c.append(t,p,b)}
+  b.onclick=async()=>{const j=await api("join",{team:t.value,cap:p.value});if(j&&!j.err){me=j;localStorage.setItem("me",JSON.stringify(j));poll()}};c.append(t,p,b)}
  else c.append(h("p","m","You are in. Waiting for the host to start."));
  const l=h("div","card"),ids=Object.keys(S.teams);l.append(h("h2",0,"Teams joined ("+ids.length+")"));
  ids.forEach(u=>l.append(h("div",0,S.teams[u].team+" — captain "+S.teams[u].cap+(me&&u===me.id?" (you)":""))));
