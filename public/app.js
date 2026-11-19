@@ -33,8 +33,8 @@ function playBidSound() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = "sine";
-    osc.frequency.setValueAtTime(659.25, ctx.currentTime); // E5
-    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12); // A5
+    osc.frequency.setValueAtTime(659.25, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12);
     gain.gain.setValueAtTime(0.18, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
     osc.connect(gain);
@@ -105,21 +105,27 @@ async function poll() {
   const res = await api("state", {}, true);
   if (!res) {
     if (!S) {
-      $("#app").innerHTML = `
-        <div class="card" style="text-align:center; padding: 40px 20px;">
-          <h2 style="color:#ef4444; margin-bottom:8px;">⚠️ Connection Error</h2>
-          <p class="text-muted">Could not reach the auction server. Please ensure the server is active.</p>
-        </div>`;
+      const app = $("#app");
+      if (app) {
+        app.innerHTML = `
+          <div class="card" style="text-align:center; padding: 40px 20px;">
+            <h2 style="color:#ef4444; margin-bottom:8px;">⚠️ Connection Error</h2>
+            <p class="text-muted">Could not reach the auction server. Please ensure the server is active.</p>
+          </div>`;
+      }
     }
     return;
   }
   if (res.err) {
     if (!S) {
-      $("#app").innerHTML = `
-        <div class="card" style="text-align:center; padding: 40px 20px;">
-          <h2 style="color:#f59e0b; margin-bottom:8px;">⚠️ Notice</h2>
-          <p class="text-muted">${res.err}</p>
-        </div>`;
+      const app = $("#app");
+      if (app) {
+        app.innerHTML = `
+          <div class="card" style="text-align:center; padding: 40px 20px;">
+            <h2 style="color:#f59e0b; margin-bottom:8px;">⚠️ Notice</h2>
+            <p class="text-muted">${res.err}</p>
+          </div>`;
+      }
     }
     return;
   }
@@ -127,13 +133,11 @@ async function poll() {
   S = res.s;
   clockOffset = S.now - Date.now();
 
-  // Reset local credentials if team was deleted/reset
   if (me && !S.teams[me.id]) {
     me = null;
     localStorage.removeItem("cricket_auction_me");
   }
 
-  // Sound triggers
   if (S.phase === "live") {
     if (previousLot !== -1 && previousLot !== S.idx) {
       playGavelSound();
@@ -148,10 +152,8 @@ async function poll() {
     previousHighBid = 0;
   }
 
-  // Update navbar status
   updateNavbarStatus();
 
-  // Re-render if state signature changed
   const stateSignature = JSON.stringify({
     phase: S.phase,
     idx: S.idx,
@@ -186,7 +188,6 @@ function updateNavbarStatus() {
   }
 }
 
-// Timer tick loop (runs at 100ms for smooth seconds display)
 setInterval(() => {
   const timerEl = $("#timer-display");
   if (timerEl && S && S.phase === "live") {
@@ -241,10 +242,9 @@ function getRoleIcon(role) {
   return "🏏";
 }
 
-// Main Render Router
 function render() {
   const app = $("#app");
-  if (!S) return;
+  if (!S || !app) return;
 
   if (S.phase === "lobby") {
     renderLobby(app);
@@ -269,7 +269,7 @@ function renderLobby(app) {
         <strong style="color:#fbbf24; display:block; margin-bottom:2px;">⚡ Solo Mode / Quick Test</strong>
         <span class="text-muted" style="font-size:13px;">Testing alone? Add 3 simulated rival teams with one click to start the auction right away!</span>
       </div>
-      <button class="btn btn-secondary" onclick="addDemoTeams()">+ Add Demo Teams</button>
+      <button class="btn btn-secondary" data-action="add_bots" onclick="addDemoTeams()">+ Add Demo Teams</button>
     </div>
 
     <div class="grid-2">
@@ -288,7 +288,7 @@ function renderLobby(app) {
             <label class="form-label">Captain Name (Your Name)</label>
             <input type="text" id="join-cap" placeholder="e.g. Alex, Bilal" maxlength="24">
           </div>
-          <button class="btn btn-primary btn-lg" style="width:100%" onclick="joinAuction()">Join Auction Room</button>
+          <button class="btn btn-primary btn-lg" style="width:100%" data-action="join" onclick="joinAuction()">Join Auction Room</button>
         ` : `
           <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:16px; margin-bottom:16px;">
             <div style="font-size:18px; font-weight:800; color:#fff;">${userTeam.team}</div>
@@ -376,7 +376,7 @@ function renderLobby(app) {
       </div>
       <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
         <input type="password" id="host-pin" placeholder="Host PIN (default: 1234)" value="${pin}" style="max-width:240px; margin:0;" oninput="onPinChange(this.value)">
-        <button class="btn btn-gold btn-lg" ${teamIds.length < 2 ? "disabled" : ""} onclick="startAuction()">
+        <button class="btn btn-gold btn-lg" data-action="start" ${teamIds.length < 2 ? "disabled" : ""} onclick="startAuction()">
           ▶ Start Auction Now
         </button>
       </div>
@@ -445,23 +445,23 @@ function renderLive(app) {
           <div class="paddles">
             ${userTeam ? `
               <div class="quick-bids">
-                <button class="btn btn-primary btn-lg" ${!canBid || minNextBid > userMax ? "disabled" : ""} onclick="bidAmt(${minNextBid})">
+                <button class="btn btn-primary btn-lg" data-action="bid" data-arg="${minNextBid}" ${!canBid || minNextBid > userMax ? "disabled" : ""} onclick="bidAmt(${minNextBid})">
                   Bid ${minNextBid}M
                 </button>
-                <button class="btn btn-primary btn-lg" ${!canBid || r1(minNextBid + 0.5) > userMax ? "disabled" : ""} onclick="bidAmt(${r1(minNextBid + 0.5)})">
+                <button class="btn btn-primary btn-lg" data-action="bid" data-arg="${r1(minNextBid + 0.5)}" ${!canBid || r1(minNextBid + 0.5) > userMax ? "disabled" : ""} onclick="bidAmt(${r1(minNextBid + 0.5)})">
                   +0.5M (${r1(minNextBid + 0.5)}M)
                 </button>
-                <button class="btn btn-primary btn-lg" ${!canBid || r1(minNextBid + 1.0) > userMax ? "disabled" : ""} onclick="bidAmt(${r1(minNextBid + 1.0)})">
+                <button class="btn btn-primary btn-lg" data-action="bid" data-arg="${r1(minNextBid + 1.0)}" ${!canBid || r1(minNextBid + 1.0) > userMax ? "disabled" : ""} onclick="bidAmt(${r1(minNextBid + 1.0)})">
                   +1.0M (${r1(minNextBid + 1.0)}M)
                 </button>
               </div>
 
               <div class="custom-bid-row">
-                <input type="number" step="0.1" id="custom-bid-input" placeholder="Custom M" value="${customBidVal}" oninput="customBidVal=this.value" style="margin:0; width:130px;">
-                <button class="btn btn-secondary" style="flex:1" ${!canBid ? "disabled" : ""} onclick="submitCustomBid()">
+                <input type="number" step="0.1" id="custom-bid-input" placeholder="Custom M" value="${customBidVal}" style="margin:0; width:130px;">
+                <button class="btn btn-secondary" style="flex:1" data-action="custom_bid" ${!canBid ? "disabled" : ""} onclick="submitCustomBid()">
                   Submit Bid
                 </button>
-                <button class="btn btn-danger" ${isLeader || hasSkipped ? "disabled" : ""} onclick="skipLot()">
+                <button class="btn btn-danger" data-action="skip" ${isLeader || hasSkipped ? "disabled" : ""} onclick="skipLot()">
                   ${hasSkipped ? "Skipped" : "Pass / Skip"}
                 </button>
               </div>
@@ -491,8 +491,8 @@ function renderLive(app) {
               <div class="text-dim">Reset room back to lobby</div>
             </div>
             <div style="display:flex; gap:8px;">
-              <input type="password" placeholder="PIN" value="${pin}" style="width:90px; margin:0;" oninput="onPinChange(this.value)">
-              <button class="btn btn-danger" onclick="resetAuction()">Reset Auction</button>
+              <input type="password" id="live-host-pin" placeholder="PIN" value="${pin}" style="width:90px; margin:0;" oninput="onPinChange(this.value)">
+              <button class="btn btn-danger" data-action="reset" onclick="resetAuction()">Reset Auction</button>
             </div>
           </div>
         </div>
@@ -577,7 +577,7 @@ function renderDone(app) {
       </p>
       <div style="display:flex; justify-content:center; gap:10px; align-items:center;">
         <input type="password" placeholder="Host PIN" value="${pin}" style="max-width:140px; margin:0;" oninput="onPinChange(this.value)">
-        <button class="btn btn-gold btn-lg" onclick="resetAuction()">Start New Auction</button>
+        <button class="btn btn-gold btn-lg" data-action="reset" onclick="resetAuction()">Start New Auction</button>
       </div>
     </div>
 
@@ -662,13 +662,15 @@ async function bidAmt(amt) {
 }
 
 async function submitCustomBid() {
-  const val = parseFloat(customBidVal);
+  const input = $("#custom-bid-input");
+  const val = parseFloat(input ? input.value : customBidVal);
   if (!val || isNaN(val)) {
     alert("Please enter a valid bid amount.");
     return;
   }
   await bidAmt(val);
   customBidVal = "";
+  if (input) input.value = "";
 }
 
 async function skipLot() {
@@ -686,3 +688,51 @@ function onPinChange(val) {
   pin = val;
   sessionStorage.setItem("host_pin", pin);
 }
+
+// Delegated Event Listeners (Bypasses all CSP inline-event restrictions)
+document.addEventListener("click", e => {
+  const btn = e.target.closest("[data-action]");
+  if (!btn) return;
+  if (btn.disabled) return;
+
+  const action = btn.getAttribute("data-action");
+  const arg = btn.getAttribute("data-arg");
+
+  if (action === "join") joinAuction();
+  else if (action === "add_bots") addDemoTeams();
+  else if (action === "start") startAuction();
+  else if (action === "bid") bidAmt(parseFloat(arg));
+  else if (action === "custom_bid") submitCustomBid();
+  else if (action === "skip") skipLot();
+  else if (action === "reset") resetAuction();
+  else if (action === "toggle_sound") toggleSound();
+});
+
+document.addEventListener("input", e => {
+  if (e.target.id === "host-pin" || e.target.id === "live-host-pin") {
+    onPinChange(e.target.value);
+  } else if (e.target.id === "custom-bid-input") {
+    customBidVal = e.target.value;
+  }
+});
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    if (e.target.id === "join-team" || e.target.id === "join-cap") {
+      joinAuction();
+    } else if (e.target.id === "custom-bid-input") {
+      submitCustomBid();
+    }
+  }
+});
+
+// Explicit window bindings
+window.joinAuction = joinAuction;
+window.addDemoTeams = addDemoTeams;
+window.startAuction = startAuction;
+window.bidAmt = bidAmt;
+window.submitCustomBid = submitCustomBid;
+window.skipLot = skipLot;
+window.resetAuction = resetAuction;
+window.onPinChange = onPinChange;
+window.toggleSound = toggleSound;
