@@ -6,10 +6,10 @@ const path = require("path");
 let P = [];
 try {
   P = require("./players.json");
-} catch(e) {
+} catch (e) {
   try {
     P = require("../players.json");
-  } catch(e2) {
+  } catch (e2) {
     const raw = fs.readFileSync(path.join(__dirname, "players.json"), "utf8");
     P = JSON.parse(raw);
   }
@@ -31,7 +31,7 @@ const clean = s => String(s || "").replace(/[<>&"'`\\]/g, "").trim().slice(0, 24
 const h = x => crypto.createHash("sha256").update(String(x)).digest();
 const same = (a, b) => {
   try { return crypto.timingSafeEqual(h(a), h(b)); }
-  catch(e) { return false; }
+  catch (e) { return false; }
 };
 
 // Global in-memory + temp file fallback for zero-config operation
@@ -44,7 +44,7 @@ function readFallback() {
       global.__AUCTION_MEM_STATE__ = JSON.parse(fs.readFileSync(TMP_PATH, "utf8"));
       return global.__AUCTION_MEM_STATE__;
     }
-  } catch(e) {}
+  } catch (e) { }
   global.__AUCTION_MEM_STATE__ = { phase: "lobby", teams: {}, log: [], order: [], idx: 0, high: 0, by: null, skip: [], end: 0 };
   return global.__AUCTION_MEM_STATE__;
 }
@@ -53,7 +53,7 @@ function writeFallback(s) {
   global.__AUCTION_MEM_STATE__ = s;
   try {
     fs.writeFileSync(TMP_PATH, JSON.stringify(s), "utf8");
-  } catch(e) {}
+  } catch (e) { }
 }
 
 async function kv(cmd) {
@@ -71,7 +71,7 @@ async function load() {
     try {
       const res = await kv(["GET", "st"]);
       if (res) return typeof res === "string" ? JSON.parse(res) : res;
-    } catch(e) {
+    } catch (e) {
       console.warn("Redis GET failed, using fallback:", e.message);
     }
   }
@@ -95,7 +95,7 @@ async function locked(fn) {
             await kv(["DEL", "lock"]);
           }
         }
-      } catch(e) {
+      } catch (e) {
         break;
       }
       await sleep(100);
@@ -107,7 +107,7 @@ async function locked(fn) {
   if (out !== false) {
     writeFallback(s);
     if (hasRedis) {
-      try { await kv(["SET", "st", JSON.stringify(s)]); } catch(e) {}
+      try { await kv(["SET", "st", JSON.stringify(s)]); } catch (e) { }
     }
   }
   return out;
@@ -352,7 +352,7 @@ module.exports = async (req, res) => {
     }
 
     return res.status(400).json({ err: "Bad request" });
-  } catch(e) {
+  } catch (e) {
     console.error("Auction API error:", e);
     return res.status(500).json({ err: "Server error, please try again" });
   }
