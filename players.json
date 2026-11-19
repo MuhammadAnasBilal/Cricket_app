@@ -1,1 +1,830 @@
-["Imran Khan","Glenn Maxwell","Javed Miandad","Shahid Afridi","Wasim Akram","AB de Villiers","Virat Kohli","Kevin Pietersen","M. Starc","B. Azam","Shaheen Shah Afridi","Saeed Anwar","Q. de Kock","P. Cummins","S. Smith","A. Shahzad","Sharjeel Khan","Luke Wright","Chris Gayle","D. Bravo","K. Pollard","C. Brathwaite","B. Lara","Sam Curran","M. Haris","H. Pandya","J. Bumrah","R. Sharma","L. Livingstone","MS Dhoni","Malinga","M. Rahman","S. Narine","K. Mendis","R. Rossouw","R. Jadeja","C. Green","A. Sharma","T. Head","Suryavanshi","M. Marsh","T. Banton","B. Duckett","N. Ellis","C. Morris","M. Morkel","Rashid Khan","A. Russell","Shane Watson","Jos Buttler","David Warner","Faf du Plessis","S.K. Yadav","N. Pooran","Imran Tahir","B. McCullum","James Vince","Jason Roy","J. Neesham","Finn Allen","Tim Seifert","Trent Boult","Rovman Powell","Sherfane Rutherford","Hetmyer","Naseem Shah","Junaid Khan","Abdul Razzaq","M. Nabi","Lakmal","Mahmadullah","Shakib-ul-Hasan","Suresh Raina","M. Amer","Moeen Ali","Adil Rashid","Wahab Riaz","David Miller","Heinrich Klaasen","Mark Wood","Ben Stokes","Inzamam-ul-Haq","M. Hafeez","Imran Nazir","J. Cox","J. Root","J. Archer","L. Dawson","G. Atkinson","S. Johnson","Azam Khan","S. Farhan","Khawaja Nafay","Fakhar Zaman","S. Ahmed","M. Rizwan","Pathirana","D. Brevis","S. Samson","Shivam Dube","M. Short","Matt Henry","K. Yadav","J. Hazlewood","P. Salt","Chris Wood","Dasun Shanaka","Shai Hope","Ben Cutting","Ish Sodhi","Glenn Phillips","Abrar Ahmed","Saim Ayub","Maaz Sadaqat","Sikandar Raza","Muzarabani","KL Rahul","Tim David","J. Inglis","A. Carey","M. Labuschagne","M. Stoinis","Adam Zampa","T. Stubbs","Kagiso Rabada","M. Jansen","Ellyse Perry","Meg Lanning","Danielle Wyatt","Holly Ferling","Lauren Bell","F.A. Sargent","A.K. Maguire","A. Canning","U. Raymond-Hoye","L. Little","C. Rack","L.K. O'Reilly"]
+[
+  {
+    "n": "Imran Khan",
+    "r": "All-Rounder",
+    "c": "Pakistan",
+    "b": 2.0
+  },
+  {
+    "n": "Glenn Maxwell",
+    "r": "All-Rounder",
+    "c": "Australia",
+    "b": 1.5
+  },
+  {
+    "n": "Javed Miandad",
+    "r": "Batter",
+    "c": "Pakistan",
+    "b": 1.5
+  },
+  {
+    "n": "Shahid Afridi",
+    "r": "All-Rounder",
+    "c": "Pakistan",
+    "b": 2.0
+  },
+  {
+    "n": "Wasim Akram",
+    "r": "Fast Bowler",
+    "c": "Pakistan",
+    "b": 2.0
+  },
+  {
+    "n": "AB de Villiers",
+    "r": "Wicketkeeper Batter",
+    "c": "South Africa",
+    "b": 2.0
+  },
+  {
+    "n": "Virat Kohli",
+    "r": "Top-order Batter",
+    "c": "India",
+    "b": 2.0
+  },
+  {
+    "n": "Kevin Pietersen",
+    "r": "Batter",
+    "c": "England",
+    "b": 1.5
+  },
+  {
+    "n": "M. Starc",
+    "r": "Fast Bowler",
+    "c": "Australia",
+    "b": 2.0
+  },
+  {
+    "n": "B. Azam",
+    "r": "Top-order Batter",
+    "c": "Pakistan",
+    "b": 2.0
+  },
+  {
+    "n": "Shaheen Shah Afridi",
+    "r": "Fast Bowler",
+    "c": "Pakistan",
+    "b": 2.0
+  },
+  {
+    "n": "Saeed Anwar",
+    "r": "Opening Batter",
+    "c": "Pakistan",
+    "b": 1.5
+  },
+  {
+    "n": "Q. de Kock",
+    "r": "Wicketkeeper Batter",
+    "c": "South Africa",
+    "b": 1.5
+  },
+  {
+    "n": "P. Cummins",
+    "r": "Fast Bowler",
+    "c": "Australia",
+    "b": 2.0
+  },
+  {
+    "n": "S. Smith",
+    "r": "Batter",
+    "c": "Australia",
+    "b": 1.5
+  },
+  {
+    "n": "A. Shahzad",
+    "r": "Opening Batter",
+    "c": "Pakistan",
+    "b": 0.5
+  },
+  {
+    "n": "Sharjeel Khan",
+    "r": "Opening Batter",
+    "c": "Pakistan",
+    "b": 0.8
+  },
+  {
+    "n": "Luke Wright",
+    "r": "All-Rounder",
+    "c": "England",
+    "b": 0.8
+  },
+  {
+    "n": "Chris Gayle",
+    "r": "Opening Batter",
+    "c": "West Indies",
+    "b": 2.0
+  },
+  {
+    "n": "D. Bravo",
+    "r": "All-Rounder",
+    "c": "West Indies",
+    "b": 1.5
+  },
+  {
+    "n": "K. Pollard",
+    "r": "All-Rounder",
+    "c": "West Indies",
+    "b": 1.5
+  },
+  {
+    "n": "C. Brathwaite",
+    "r": "All-Rounder",
+    "c": "West Indies",
+    "b": 0.8
+  },
+  {
+    "n": "B. Lara",
+    "r": "Batter",
+    "c": "West Indies",
+    "b": 2.0
+  },
+  {
+    "n": "Sam Curran",
+    "r": "All-Rounder",
+    "c": "England",
+    "b": 1.2
+  },
+  {
+    "n": "M. Haris",
+    "r": "Wicketkeeper Batter",
+    "c": "Pakistan",
+    "b": 0.8
+  },
+  {
+    "n": "H. Pandya",
+    "r": "All-Rounder",
+    "c": "India",
+    "b": 2.0
+  },
+  {
+    "n": "J. Bumrah",
+    "r": "Fast Bowler",
+    "c": "India",
+    "b": 2.0
+  },
+  {
+    "n": "R. Sharma",
+    "r": "Opening Batter",
+    "c": "India",
+    "b": 2.0
+  },
+  {
+    "n": "L. Livingstone",
+    "r": "All-Rounder",
+    "c": "England",
+    "b": 1.2
+  },
+  {
+    "n": "MS Dhoni",
+    "r": "Wicketkeeper Batter",
+    "c": "India",
+    "b": 2.0
+  },
+  {
+    "n": "Malinga",
+    "r": "Fast Bowler",
+    "c": "Sri Lanka",
+    "b": 2.0
+  },
+  {
+    "n": "M. Rahman",
+    "r": "Fast Bowler",
+    "c": "Bangladesh",
+    "b": 1.0
+  },
+  {
+    "n": "S. Narine",
+    "r": "Spin Bowler",
+    "c": "West Indies",
+    "b": 1.8
+  },
+  {
+    "n": "K. Mendis",
+    "r": "Wicketkeeper Batter",
+    "c": "Sri Lanka",
+    "b": 0.8
+  },
+  {
+    "n": "R. Rossouw",
+    "r": "Batter",
+    "c": "South Africa",
+    "b": 1.0
+  },
+  {
+    "n": "R. Jadeja",
+    "r": "All-Rounder",
+    "c": "India",
+    "b": 2.0
+  },
+  {
+    "n": "C. Green",
+    "r": "All-Rounder",
+    "c": "Australia",
+    "b": 1.5
+  },
+  {
+    "n": "A. Sharma",
+    "r": "Batter",
+    "c": "India",
+    "b": 0.8
+  },
+  {
+    "n": "T. Head",
+    "r": "Opening Batter",
+    "c": "Australia",
+    "b": 2.0
+  },
+  {
+    "n": "Suryavanshi",
+    "r": "Batter",
+    "c": "India",
+    "b": 0.5
+  },
+  {
+    "n": "M. Marsh",
+    "r": "All-Rounder",
+    "c": "Australia",
+    "b": 1.5
+  },
+  {
+    "n": "T. Banton",
+    "r": "Wicketkeeper Batter",
+    "c": "England",
+    "b": 0.8
+  },
+  {
+    "n": "B. Duckett",
+    "r": "Batter",
+    "c": "England",
+    "b": 0.8
+  },
+  {
+    "n": "N. Ellis",
+    "r": "Fast Bowler",
+    "c": "Australia",
+    "b": 0.8
+  },
+  {
+    "n": "C. Morris",
+    "r": "All-Rounder",
+    "c": "South Africa",
+    "b": 1.0
+  },
+  {
+    "n": "M. Morkel",
+    "r": "Fast Bowler",
+    "c": "South Africa",
+    "b": 1.2
+  },
+  {
+    "n": "Rashid Khan",
+    "r": "Spin Bowler",
+    "c": "Afghanistan",
+    "b": 2.0
+  },
+  {
+    "n": "A. Russell",
+    "r": "All-Rounder",
+    "c": "West Indies",
+    "b": 2.0
+  },
+  {
+    "n": "Shane Watson",
+    "r": "All-Rounder",
+    "c": "Australia",
+    "b": 1.8
+  },
+  {
+    "n": "Jos Buttler",
+    "r": "Wicketkeeper Batter",
+    "c": "England",
+    "b": 2.0
+  },
+  {
+    "n": "David Warner",
+    "r": "Opening Batter",
+    "c": "Australia",
+    "b": 1.8
+  },
+  {
+    "n": "Faf du Plessis",
+    "r": "Batter",
+    "c": "South Africa",
+    "b": 1.5
+  },
+  {
+    "n": "S.K. Yadav",
+    "r": "Batter",
+    "c": "India",
+    "b": 2.0
+  },
+  {
+    "n": "N. Pooran",
+    "r": "Wicketkeeper Batter",
+    "c": "West Indies",
+    "b": 1.8
+  },
+  {
+    "n": "Imran Tahir",
+    "r": "Spin Bowler",
+    "c": "South Africa",
+    "b": 1.0
+  },
+  {
+    "n": "B. McCullum",
+    "r": "Wicketkeeper Batter",
+    "c": "New Zealand",
+    "b": 1.8
+  },
+  {
+    "n": "James Vince",
+    "r": "Batter",
+    "c": "England",
+    "b": 0.8
+  },
+  {
+    "n": "Jason Roy",
+    "r": "Opening Batter",
+    "c": "England",
+    "b": 1.0
+  },
+  {
+    "n": "J. Neesham",
+    "r": "All-Rounder",
+    "c": "New Zealand",
+    "b": 0.8
+  },
+  {
+    "n": "Finn Allen",
+    "r": "Opening Batter",
+    "c": "New Zealand",
+    "b": 1.0
+  },
+  {
+    "n": "Tim Seifert",
+    "r": "Wicketkeeper Batter",
+    "c": "New Zealand",
+    "b": 0.8
+  },
+  {
+    "n": "Trent Boult",
+    "r": "Fast Bowler",
+    "c": "New Zealand",
+    "b": 2.0
+  },
+  {
+    "n": "Rovman Powell",
+    "r": "All-Rounder",
+    "c": "West Indies",
+    "b": 1.0
+  },
+  {
+    "n": "Sherfane Rutherford",
+    "r": "Batter",
+    "c": "West Indies",
+    "b": 0.8
+  },
+  {
+    "n": "Hetmyer",
+    "r": "Batter",
+    "c": "West Indies",
+    "b": 1.0
+  },
+  {
+    "n": "Naseem Shah",
+    "r": "Fast Bowler",
+    "c": "Pakistan",
+    "b": 1.5
+  },
+  {
+    "n": "Junaid Khan",
+    "r": "Fast Bowler",
+    "c": "Pakistan",
+    "b": 0.8
+  },
+  {
+    "n": "Abdul Razzaq",
+    "r": "All-Rounder",
+    "c": "Pakistan",
+    "b": 1.5
+  },
+  {
+    "n": "M. Nabi",
+    "r": "All-Rounder",
+    "c": "Afghanistan",
+    "b": 1.0
+  },
+  {
+    "n": "Lakmal",
+    "r": "Fast Bowler",
+    "c": "Sri Lanka",
+    "b": 0.5
+  },
+  {
+    "n": "Mahmadullah",
+    "r": "All-Rounder",
+    "c": "Bangladesh",
+    "b": 0.8
+  },
+  {
+    "n": "Shakib-ul-Hasan",
+    "r": "All-Rounder",
+    "c": "Bangladesh",
+    "b": 1.8
+  },
+  {
+    "n": "Suresh Raina",
+    "r": "Batter",
+    "c": "India",
+    "b": 1.5
+  },
+  {
+    "n": "M. Amer",
+    "r": "Fast Bowler",
+    "c": "Pakistan",
+    "b": 1.5
+  },
+  {
+    "n": "Moeen Ali",
+    "r": "All-Rounder",
+    "c": "England",
+    "b": 1.2
+  },
+  {
+    "n": "Adil Rashid",
+    "r": "Spin Bowler",
+    "c": "England",
+    "b": 1.2
+  },
+  {
+    "n": "Wahab Riaz",
+    "r": "Fast Bowler",
+    "c": "Pakistan",
+    "b": 1.0
+  },
+  {
+    "n": "David Miller",
+    "r": "Finisher Batter",
+    "c": "South Africa",
+    "b": 1.5
+  },
+  {
+    "n": "Heinrich Klaasen",
+    "r": "Wicketkeeper Batter",
+    "c": "South Africa",
+    "b": 2.0
+  },
+  {
+    "n": "Mark Wood",
+    "r": "Fast Bowler",
+    "c": "England",
+    "b": 1.5
+  },
+  {
+    "n": "Ben Stokes",
+    "r": "All-Rounder",
+    "c": "England",
+    "b": 2.0
+  },
+  {
+    "n": "Inzamam-ul-Haq",
+    "r": "Batter",
+    "c": "Pakistan",
+    "b": 1.8
+  },
+  {
+    "n": "M. Hafeez",
+    "r": "All-Rounder",
+    "c": "Pakistan",
+    "b": 1.2
+  },
+  {
+    "n": "Imran Nazir",
+    "r": "Opening Batter",
+    "c": "Pakistan",
+    "b": 0.8
+  },
+  {
+    "n": "J. Cox",
+    "r": "Wicketkeeper Batter",
+    "c": "England",
+    "b": 0.5
+  },
+  {
+    "n": "J. Root",
+    "r": "Batter",
+    "c": "England",
+    "b": 1.8
+  },
+  {
+    "n": "J. Archer",
+    "r": "Fast Bowler",
+    "c": "England",
+    "b": 1.8
+  },
+  {
+    "n": "L. Dawson",
+    "r": "All-Rounder",
+    "c": "England",
+    "b": 0.5
+  },
+  {
+    "n": "G. Atkinson",
+    "r": "Fast Bowler",
+    "c": "England",
+    "b": 0.8
+  },
+  {
+    "n": "S. Johnson",
+    "r": "Fast Bowler",
+    "c": "Australia",
+    "b": 0.5
+  },
+  {
+    "n": "Azam Khan",
+    "r": "Wicketkeeper Batter",
+    "c": "Pakistan",
+    "b": 0.8
+  },
+  {
+    "n": "S. Farhan",
+    "r": "Opening Batter",
+    "c": "Pakistan",
+    "b": 0.5
+  },
+  {
+    "n": "Khawaja Nafay",
+    "r": "Batter",
+    "c": "Pakistan",
+    "b": 0.5
+  },
+  {
+    "n": "Fakhar Zaman",
+    "r": "Opening Batter",
+    "c": "Pakistan",
+    "b": 1.5
+  },
+  {
+    "n": "S. Ahmed",
+    "r": "Wicketkeeper Batter",
+    "c": "Pakistan",
+    "b": 1.0
+  },
+  {
+    "n": "M. Rizwan",
+    "r": "Wicketkeeper Batter",
+    "c": "Pakistan",
+    "b": 2.0
+  },
+  {
+    "n": "Pathirana",
+    "r": "Fast Bowler",
+    "c": "Sri Lanka",
+    "b": 1.5
+  },
+  {
+    "n": "D. Brevis",
+    "r": "Batter",
+    "c": "South Africa",
+    "b": 1.0
+  },
+  {
+    "n": "S. Samson",
+    "r": "Wicketkeeper Batter",
+    "c": "India",
+    "b": 1.5
+  },
+  {
+    "n": "Shivam Dube",
+    "r": "All-Rounder",
+    "c": "India",
+    "b": 1.0
+  },
+  {
+    "n": "M. Short",
+    "r": "All-Rounder",
+    "c": "Australia",
+    "b": 0.8
+  },
+  {
+    "n": "Matt Henry",
+    "r": "Fast Bowler",
+    "c": "New Zealand",
+    "b": 1.2
+  },
+  {
+    "n": "K. Yadav",
+    "r": "Spin Bowler",
+    "c": "India",
+    "b": 1.5
+  },
+  {
+    "n": "J. Hazlewood",
+    "r": "Fast Bowler",
+    "c": "Australia",
+    "b": 1.8
+  },
+  {
+    "n": "P. Salt",
+    "r": "Wicketkeeper Batter",
+    "c": "England",
+    "b": 1.5
+  },
+  {
+    "n": "Chris Wood",
+    "r": "Fast Bowler",
+    "c": "England",
+    "b": 0.5
+  },
+  {
+    "n": "Dasun Shanaka",
+    "r": "All-Rounder",
+    "c": "Sri Lanka",
+    "b": 0.8
+  },
+  {
+    "n": "Shai Hope",
+    "r": "Wicketkeeper Batter",
+    "c": "West Indies",
+    "b": 1.0
+  },
+  {
+    "n": "Ben Cutting",
+    "r": "All-Rounder",
+    "c": "Australia",
+    "b": 0.8
+  },
+  {
+    "n": "Ish Sodhi",
+    "r": "Spin Bowler",
+    "c": "New Zealand",
+    "b": 0.8
+  },
+  {
+    "n": "Glenn Phillips",
+    "r": "All-Rounder",
+    "c": "New Zealand",
+    "b": 1.2
+  },
+  {
+    "n": "Abrar Ahmed",
+    "r": "Spin Bowler",
+    "c": "Pakistan",
+    "b": 0.8
+  },
+  {
+    "n": "Saim Ayub",
+    "r": "Opening Batter",
+    "c": "Pakistan",
+    "b": 1.0
+  },
+  {
+    "n": "Maaz Sadaqat",
+    "r": "All-Rounder",
+    "c": "Pakistan",
+    "b": 0.5
+  },
+  {
+    "n": "Sikandar Raza",
+    "r": "All-Rounder",
+    "c": "Zimbabwe",
+    "b": 1.2
+  },
+  {
+    "n": "Muzarabani",
+    "r": "Fast Bowler",
+    "c": "Zimbabwe",
+    "b": 0.8
+  },
+  {
+    "n": "KL Rahul",
+    "r": "Wicketkeeper Batter",
+    "c": "India",
+    "b": 1.8
+  },
+  {
+    "n": "Tim David",
+    "r": "Finisher Batter",
+    "c": "Australia",
+    "b": 1.2
+  },
+  {
+    "n": "J. Inglis",
+    "r": "Wicketkeeper Batter",
+    "c": "Australia",
+    "b": 1.0
+  },
+  {
+    "n": "A. Carey",
+    "r": "Wicketkeeper Batter",
+    "c": "Australia",
+    "b": 0.8
+  },
+  {
+    "n": "M. Labuschagne",
+    "r": "Batter",
+    "c": "Australia",
+    "b": 1.0
+  },
+  {
+    "n": "M. Stoinis",
+    "r": "All-Rounder",
+    "c": "Australia",
+    "b": 1.5
+  },
+  {
+    "n": "Adam Zampa",
+    "r": "Spin Bowler",
+    "c": "Australia",
+    "b": 1.5
+  },
+  {
+    "n": "T. Stubbs",
+    "r": "Finisher Batter",
+    "c": "South Africa",
+    "b": 1.2
+  },
+  {
+    "n": "Kagiso Rabada",
+    "r": "Fast Bowler",
+    "c": "South Africa",
+    "b": 1.8
+  },
+  {
+    "n": "M. Jansen",
+    "r": "All-Rounder",
+    "c": "South Africa",
+    "b": 1.2
+  },
+  {
+    "n": "Ellyse Perry",
+    "r": "All-Rounder",
+    "c": "Australia",
+    "b": 1.5
+  },
+  {
+    "n": "Meg Lanning",
+    "r": "Batter",
+    "c": "Australia",
+    "b": 1.5
+  },
+  {
+    "n": "Danielle Wyatt",
+    "r": "Batter",
+    "c": "England",
+    "b": 0.8
+  },
+  {
+    "n": "Holly Ferling",
+    "r": "Fast Bowler",
+    "c": "Australia",
+    "b": 0.5
+  },
+  {
+    "n": "Lauren Bell",
+    "r": "Fast Bowler",
+    "c": "England",
+    "b": 0.8
+  },
+  {
+    "n": "F.A. Sargent",
+    "r": "Bowler",
+    "c": "Australia",
+    "b": 0.5
+  },
+  {
+    "n": "A.K. Maguire",
+    "r": "Batter",
+    "c": "Australia",
+    "b": 0.5
+  },
+  {
+    "n": "A. Canning",
+    "r": "Bowler",
+    "c": "Australia",
+    "b": 0.5
+  },
+  {
+    "n": "U. Raymond-Hoye",
+    "r": "Batter",
+    "c": "Australia",
+    "b": 0.5
+  },
+  {
+    "n": "L. Little",
+    "r": "Bowler",
+    "c": "Australia",
+    "b": 0.5
+  },
+  {
+    "n": "C. Rack",
+    "r": "Bowler",
+    "c": "Australia",
+    "b": 0.5
+  },
+  {
+    "n": "L.K. O'Reilly",
+    "r": "Bowler",
+    "c": "Australia",
+    "b": 0.5
+  }
+]
